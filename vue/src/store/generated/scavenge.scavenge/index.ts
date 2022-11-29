@@ -1,9 +1,10 @@
 import { Client, registry, MissingWalletError } from 'scavenge-client-ts'
 
 import { Params } from "scavenge-client-ts/scavenge.scavenge/types"
+import { Scavenge } from "scavenge-client-ts/scavenge.scavenge/types"
 
 
-export { Params };
+export { Params, Scavenge };
 
 function initClient(vuexGetters) {
 	return new Client(vuexGetters['common/env/getEnv'], vuexGetters['common/wallet/signer'])
@@ -35,9 +36,12 @@ function getStructure(template) {
 const getDefaultState = () => {
 	return {
 				Params: {},
+				Scavenge: {},
+				ScavengeAll: {},
 				
 				_Structure: {
 						Params: getStructure(Params.fromPartial({})),
+						Scavenge: getStructure(Scavenge.fromPartial({})),
 						
 		},
 		_Registry: registry,
@@ -71,6 +75,18 @@ export default {
 						(<any> params).query=null
 					}
 			return state.Params[JSON.stringify(params)] ?? {}
+		},
+				getScavenge: (state) => (params = { params: {}}) => {
+					if (!(<any> params).query) {
+						(<any> params).query=null
+					}
+			return state.Scavenge[JSON.stringify(params)] ?? {}
+		},
+				getScavengeAll: (state) => (params = { params: {}}) => {
+					if (!(<any> params).query) {
+						(<any> params).query=null
+					}
+			return state.ScavengeAll[JSON.stringify(params)] ?? {}
 		},
 				
 		getTypeStructure: (state) => (type) => {
@@ -128,16 +144,64 @@ export default {
 		},
 		
 		
-		async sendMsgRevealSolution({ rootGetters }, { value, fee = [], memo = '' }) {
+		
+		
+		 		
+		
+		
+		async QueryScavenge({ commit, rootGetters, getters }, { options: { subscribe, all} = { subscribe:false, all:false}, params, query=null }) {
+			try {
+				const key = params ?? {};
+				const client = initClient(rootGetters);
+				let value= (await client.ScavengeScavenge.query.queryScavenge( key.index)).data
+				
+					
+				commit('QUERY', { query: 'Scavenge', key: { params: {...key}, query}, value })
+				if (subscribe) commit('SUBSCRIBE', { action: 'QueryScavenge', payload: { options: { all }, params: {...key},query }})
+				return getters['getScavenge']( { params: {...key}, query}) ?? {}
+			} catch (e) {
+				throw new Error('QueryClient:QueryScavenge API Node Unavailable. Could not perform query: ' + e.message)
+				
+			}
+		},
+		
+		
+		
+		
+		 		
+		
+		
+		async QueryScavengeAll({ commit, rootGetters, getters }, { options: { subscribe, all} = { subscribe:false, all:false}, params, query=null }) {
+			try {
+				const key = params ?? {};
+				const client = initClient(rootGetters);
+				let value= (await client.ScavengeScavenge.query.queryScavengeAll(query ?? undefined)).data
+				
+					
+				while (all && (<any> value).pagination && (<any> value).pagination.next_key!=null) {
+					let next_values=(await client.ScavengeScavenge.query.queryScavengeAll({...query ?? {}, 'pagination.key':(<any> value).pagination.next_key} as any)).data
+					value = mergeResults(value, next_values);
+				}
+				commit('QUERY', { query: 'ScavengeAll', key: { params: {...key}, query}, value })
+				if (subscribe) commit('SUBSCRIBE', { action: 'QueryScavengeAll', payload: { options: { all }, params: {...key},query }})
+				return getters['getScavengeAll']( { params: {...key}, query}) ?? {}
+			} catch (e) {
+				throw new Error('QueryClient:QueryScavengeAll API Node Unavailable. Could not perform query: ' + e.message)
+				
+			}
+		},
+		
+		
+		async sendMsgSubmitScavenge({ rootGetters }, { value, fee = [], memo = '' }) {
 			try {
 				const client=await initClient(rootGetters)
-				const result = await client.ScavengeScavenge.tx.sendMsgRevealSolution({ value, fee: {amount: fee, gas: "200000"}, memo })
+				const result = await client.ScavengeScavenge.tx.sendMsgSubmitScavenge({ value, fee: {amount: fee, gas: "200000"}, memo })
 				return result
 			} catch (e) {
 				if (e == MissingWalletError) {
-					throw new Error('TxClient:MsgRevealSolution:Init Could not initialize signing client. Wallet is required.')
+					throw new Error('TxClient:MsgSubmitScavenge:Init Could not initialize signing client. Wallet is required.')
 				}else{
-					throw new Error('TxClient:MsgRevealSolution:Send Could not broadcast Tx: '+ e.message)
+					throw new Error('TxClient:MsgSubmitScavenge:Send Could not broadcast Tx: '+ e.message)
 				}
 			}
 		},
@@ -154,30 +218,30 @@ export default {
 				}
 			}
 		},
-		async sendMsgSubmitScavenge({ rootGetters }, { value, fee = [], memo = '' }) {
+		async sendMsgRevealSolution({ rootGetters }, { value, fee = [], memo = '' }) {
 			try {
 				const client=await initClient(rootGetters)
-				const result = await client.ScavengeScavenge.tx.sendMsgSubmitScavenge({ value, fee: {amount: fee, gas: "200000"}, memo })
+				const result = await client.ScavengeScavenge.tx.sendMsgRevealSolution({ value, fee: {amount: fee, gas: "200000"}, memo })
 				return result
 			} catch (e) {
 				if (e == MissingWalletError) {
-					throw new Error('TxClient:MsgSubmitScavenge:Init Could not initialize signing client. Wallet is required.')
+					throw new Error('TxClient:MsgRevealSolution:Init Could not initialize signing client. Wallet is required.')
 				}else{
-					throw new Error('TxClient:MsgSubmitScavenge:Send Could not broadcast Tx: '+ e.message)
+					throw new Error('TxClient:MsgRevealSolution:Send Could not broadcast Tx: '+ e.message)
 				}
 			}
 		},
 		
-		async MsgRevealSolution({ rootGetters }, { value }) {
+		async MsgSubmitScavenge({ rootGetters }, { value }) {
 			try {
 				const client=initClient(rootGetters)
-				const msg = await client.ScavengeScavenge.tx.msgRevealSolution({value})
+				const msg = await client.ScavengeScavenge.tx.msgSubmitScavenge({value})
 				return msg
 			} catch (e) {
 				if (e == MissingWalletError) {
-					throw new Error('TxClient:MsgRevealSolution:Init Could not initialize signing client. Wallet is required.')
+					throw new Error('TxClient:MsgSubmitScavenge:Init Could not initialize signing client. Wallet is required.')
 				} else{
-					throw new Error('TxClient:MsgRevealSolution:Create Could not create message: ' + e.message)
+					throw new Error('TxClient:MsgSubmitScavenge:Create Could not create message: ' + e.message)
 				}
 			}
 		},
@@ -194,16 +258,16 @@ export default {
 				}
 			}
 		},
-		async MsgSubmitScavenge({ rootGetters }, { value }) {
+		async MsgRevealSolution({ rootGetters }, { value }) {
 			try {
 				const client=initClient(rootGetters)
-				const msg = await client.ScavengeScavenge.tx.msgSubmitScavenge({value})
+				const msg = await client.ScavengeScavenge.tx.msgRevealSolution({value})
 				return msg
 			} catch (e) {
 				if (e == MissingWalletError) {
-					throw new Error('TxClient:MsgSubmitScavenge:Init Could not initialize signing client. Wallet is required.')
+					throw new Error('TxClient:MsgRevealSolution:Init Could not initialize signing client. Wallet is required.')
 				} else{
-					throw new Error('TxClient:MsgSubmitScavenge:Create Could not create message: ' + e.message)
+					throw new Error('TxClient:MsgRevealSolution:Create Could not create message: ' + e.message)
 				}
 			}
 		},
