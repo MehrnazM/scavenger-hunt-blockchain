@@ -7,11 +7,18 @@ import { msgTypes } from './registry';
 import { IgniteClient } from "../client"
 import { MissingWalletError } from "../helpers"
 import { Api } from "./rest";
+import { MsgRevealSolution } from "./types/scavenge/scavenge/tx";
 import { MsgCommitSolution } from "./types/scavenge/scavenge/tx";
 import { MsgSubmitScavenge } from "./types/scavenge/scavenge/tx";
 
 
-export { MsgCommitSolution, MsgSubmitScavenge };
+export { MsgRevealSolution, MsgCommitSolution, MsgSubmitScavenge };
+
+type sendMsgRevealSolutionParams = {
+  value: MsgRevealSolution,
+  fee?: StdFee,
+  memo?: string
+};
 
 type sendMsgCommitSolutionParams = {
   value: MsgCommitSolution,
@@ -25,6 +32,10 @@ type sendMsgSubmitScavengeParams = {
   memo?: string
 };
 
+
+type msgRevealSolutionParams = {
+  value: MsgRevealSolution,
+};
 
 type msgCommitSolutionParams = {
   value: MsgCommitSolution,
@@ -51,6 +62,20 @@ interface TxClientOptions {
 export const txClient = ({ signer, prefix, addr }: TxClientOptions = { addr: "http://localhost:26657", prefix: "cosmos" }) => {
 
   return {
+		
+		async sendMsgRevealSolution({ value, fee, memo }: sendMsgRevealSolutionParams): Promise<DeliverTxResponse> {
+			if (!signer) {
+					throw new Error('TxClient:sendMsgRevealSolution: Unable to sign Tx. Signer is not present.')
+			}
+			try {			
+				const { address } = (await signer.getAccounts())[0]; 
+				const signingClient = await SigningStargateClient.connectWithSigner(addr,signer,{registry, prefix});
+				let msg = this.msgRevealSolution({ value: MsgRevealSolution.fromPartial(value) })
+				return await signingClient.signAndBroadcast(address, [msg], fee ? fee : defaultFee, memo)
+			} catch (e: any) {
+				throw new Error('TxClient:sendMsgRevealSolution: Could not broadcast Tx: '+ e.message)
+			}
+		},
 		
 		async sendMsgCommitSolution({ value, fee, memo }: sendMsgCommitSolutionParams): Promise<DeliverTxResponse> {
 			if (!signer) {
@@ -80,6 +105,14 @@ export const txClient = ({ signer, prefix, addr }: TxClientOptions = { addr: "ht
 			}
 		},
 		
+		
+		msgRevealSolution({ value }: msgRevealSolutionParams): EncodeObject {
+			try {
+				return { typeUrl: "/scavenge.scavenge.MsgRevealSolution", value: MsgRevealSolution.fromPartial( value ) }  
+			} catch (e: any) {
+				throw new Error('TxClient:MsgRevealSolution: Could not create message: ' + e.message)
+			}
+		},
 		
 		msgCommitSolution({ value }: msgCommitSolutionParams): EncodeObject {
 			try {
