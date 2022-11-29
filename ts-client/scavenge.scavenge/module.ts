@@ -7,18 +7,12 @@ import { msgTypes } from './registry';
 import { IgniteClient } from "../client"
 import { MissingWalletError } from "../helpers"
 import { Api } from "./rest";
-import { MsgSubmitScavenge } from "./types/scavenge/scavenge/tx";
 import { MsgCommitSolution } from "./types/scavenge/scavenge/tx";
 import { MsgRevealSolution } from "./types/scavenge/scavenge/tx";
+import { MsgSubmitScavenge } from "./types/scavenge/scavenge/tx";
 
 
-export { MsgSubmitScavenge, MsgCommitSolution, MsgRevealSolution };
-
-type sendMsgSubmitScavengeParams = {
-  value: MsgSubmitScavenge,
-  fee?: StdFee,
-  memo?: string
-};
+export { MsgCommitSolution, MsgRevealSolution, MsgSubmitScavenge };
 
 type sendMsgCommitSolutionParams = {
   value: MsgCommitSolution,
@@ -32,10 +26,12 @@ type sendMsgRevealSolutionParams = {
   memo?: string
 };
 
-
-type msgSubmitScavengeParams = {
+type sendMsgSubmitScavengeParams = {
   value: MsgSubmitScavenge,
+  fee?: StdFee,
+  memo?: string
 };
+
 
 type msgCommitSolutionParams = {
   value: MsgCommitSolution,
@@ -43,6 +39,10 @@ type msgCommitSolutionParams = {
 
 type msgRevealSolutionParams = {
   value: MsgRevealSolution,
+};
+
+type msgSubmitScavengeParams = {
+  value: MsgSubmitScavenge,
 };
 
 
@@ -62,20 +62,6 @@ interface TxClientOptions {
 export const txClient = ({ signer, prefix, addr }: TxClientOptions = { addr: "http://localhost:26657", prefix: "cosmos" }) => {
 
   return {
-		
-		async sendMsgSubmitScavenge({ value, fee, memo }: sendMsgSubmitScavengeParams): Promise<DeliverTxResponse> {
-			if (!signer) {
-					throw new Error('TxClient:sendMsgSubmitScavenge: Unable to sign Tx. Signer is not present.')
-			}
-			try {			
-				const { address } = (await signer.getAccounts())[0]; 
-				const signingClient = await SigningStargateClient.connectWithSigner(addr,signer,{registry, prefix});
-				let msg = this.msgSubmitScavenge({ value: MsgSubmitScavenge.fromPartial(value) })
-				return await signingClient.signAndBroadcast(address, [msg], fee ? fee : defaultFee, memo)
-			} catch (e: any) {
-				throw new Error('TxClient:sendMsgSubmitScavenge: Could not broadcast Tx: '+ e.message)
-			}
-		},
 		
 		async sendMsgCommitSolution({ value, fee, memo }: sendMsgCommitSolutionParams): Promise<DeliverTxResponse> {
 			if (!signer) {
@@ -105,14 +91,20 @@ export const txClient = ({ signer, prefix, addr }: TxClientOptions = { addr: "ht
 			}
 		},
 		
-		
-		msgSubmitScavenge({ value }: msgSubmitScavengeParams): EncodeObject {
-			try {
-				return { typeUrl: "/scavenge.scavenge.MsgSubmitScavenge", value: MsgSubmitScavenge.fromPartial( value ) }  
+		async sendMsgSubmitScavenge({ value, fee, memo }: sendMsgSubmitScavengeParams): Promise<DeliverTxResponse> {
+			if (!signer) {
+					throw new Error('TxClient:sendMsgSubmitScavenge: Unable to sign Tx. Signer is not present.')
+			}
+			try {			
+				const { address } = (await signer.getAccounts())[0]; 
+				const signingClient = await SigningStargateClient.connectWithSigner(addr,signer,{registry, prefix});
+				let msg = this.msgSubmitScavenge({ value: MsgSubmitScavenge.fromPartial(value) })
+				return await signingClient.signAndBroadcast(address, [msg], fee ? fee : defaultFee, memo)
 			} catch (e: any) {
-				throw new Error('TxClient:MsgSubmitScavenge: Could not create message: ' + e.message)
+				throw new Error('TxClient:sendMsgSubmitScavenge: Could not broadcast Tx: '+ e.message)
 			}
 		},
+		
 		
 		msgCommitSolution({ value }: msgCommitSolutionParams): EncodeObject {
 			try {
@@ -127,6 +119,14 @@ export const txClient = ({ signer, prefix, addr }: TxClientOptions = { addr: "ht
 				return { typeUrl: "/scavenge.scavenge.MsgRevealSolution", value: MsgRevealSolution.fromPartial( value ) }  
 			} catch (e: any) {
 				throw new Error('TxClient:MsgRevealSolution: Could not create message: ' + e.message)
+			}
+		},
+		
+		msgSubmitScavenge({ value }: msgSubmitScavengeParams): EncodeObject {
+			try {
+				return { typeUrl: "/scavenge.scavenge.MsgSubmitScavenge", value: MsgSubmitScavenge.fromPartial( value ) }  
+			} catch (e: any) {
+				throw new Error('TxClient:MsgSubmitScavenge: Could not create message: ' + e.message)
 			}
 		},
 		
